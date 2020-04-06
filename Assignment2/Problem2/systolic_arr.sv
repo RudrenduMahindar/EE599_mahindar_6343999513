@@ -29,18 +29,15 @@ function integer log2;
    
 endfunction
 
+parameter Count_Wid = log2(Matrix_Wid); 
 
-parameter Count_Wid = log2(Matrix_Wid);
-parameter INIT = 2'b00, MULT = 2'b01, DONE = 2'b10; 
-
-reg [1:0] state;
 reg [Count_Wid-1:0] index;
 wire [Matrix_Wid-1:0] outdone [0:Matrix_Wid-1];
 wire [Matrix_Wid-1:0] restart [0:Matrix_Wid-1];
 wire [Count_Wid-1:0] count [0:Matrix_Wid-1];
 
 assign restart[0][0] = start && rdy; 
-assign outdone[0][0] = ((state==DONE) || (count[0] == Matrix_Wid));
+assign outdone[0][0] = (count[0] == Matrix_Wid);
 assign count[0] = index;
 
 wire [Matrix_Wid:0] inp_valid [0:Matrix_Wid-1];
@@ -68,44 +65,22 @@ generate
     end
 endgenerate
 
-assign valid = (outdone[Matrix_Wid-1][Matrix_Wid-1]) || (state==DONE); 
-assign rdy = (state != MULT);
+assign valid = (outdone[Matrix_Wid-1][Matrix_Wid-1]); 
 
 always @(posedge clk) 
 begin
-		case(state)
-            INIT:
-            begin
-                if (start) begin
-                    state   <= MULT;
-                    index     <= index + 1;
-                end        
-                else
-                    index     <= 0;
-            end
-            MULT:
-            begin
-                if (outdone[Matrix_Wid-1][Matrix_Wid-1])
-                    state   <= DONE; 
-                if (start)
-                    index     <= 1;
-                else if (index < Matrix_Wid)
-                    index     <= index + 1;
-            end
-            DONE:
-            begin
-                index <= 0;
-                if (start && ack)
-                    state   <= MULT;
-                else if (ack)
-                    state   <= INIT;
-            end
-        endcase
+     
+    if (!outdone[Matrix_Wid-1][Matrix_Wid-1])
+    begin             
+        if (start)
+            index     <= 0;
+        else if (index < Matrix_Wid)
+            index     <= index + 1;
+    end
+        
 end
 
-
-
-assign inp_valid[0][0] = ((state==MULT) && (count[0] < Matrix_Wid)) || (start);
+assign inp_valid[0][0] = (count[0] < Matrix_Wid) || (start);
 assign inputSysArray1[0][0] = input1[0][count[0]];
 assign inputSysArray2[0][0] = input2[count[0]][0];
 
